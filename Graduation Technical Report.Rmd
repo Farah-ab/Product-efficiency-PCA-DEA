@@ -1,0 +1,712 @@
+---
+pdf_document: default
+author: "*as a partial fulfillment of the degree of Bachelor of Science in Business Administration*
+  <br>
+  <br> 
+  <br>
+  **Efficiency Measurement of Product Performance
+  <br>
+  PCA-DEA  
+  <br>
+  A Combined Model Approach for Dimension Reduction** 
+  <br> 
+  <br>
+  <br> Farah Aboucha 
+  <br> Tunis Business School
+  <br> University of Tunis"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+title: "Graduation Project - Technical Report "
+html_document: default
+---
+
+<style>
+body {
+  font-family: 'Times New Roman', sans-serif;
+}
+
+h1, h2 {
+  font-family: 'Times New Roman', serif;
+  color : #0C134F
+}
+
+h3 {
+  font-family: 'Times New Roman', serif;
+  color: #6c8ebf 
+}
+
+h4 {
+  font-family: 'Times New Roman', serif;
+  color: #1D267D;
+}
+h5 {
+  font-family: 'Times New Roman', serif;
+  color: #537188;
+}
+
+
+code {
+  font-family: 'Arial', sans-serif;
+}
+
+.title {
+  text-align: center;
+}
+
+.author {
+  text-align: center;
+}
+
+</style>
+
+
+```{r setup, include=FALSE, message=FALSE, warning=FALSE}
+library(knitr)
+library(reticulate)
+library(Benchmarking)
+library(readxl)
+library(ggplot2)
+library(writexl)
+library(caret)
+library(ggpubr)
+library(factoextra)             
+library(reshape2)
+library(dplyr)
+library(openxlsx)
+
+
+knitr::opts_chunk$set(echo = TRUE)
+
+use_python("/Users/farahaboucha/anaconda3/bin/python")
+```
+
+<br>
+<br>
+
+<h3> I- Introduction: </h3>
+
+The motivation behind combining DEA and PCA is to gain a deeper understanding of efficiency scores obtained while reducing data dimensiality. This approach involves several steps that will be captured in this report. 
+First, PCA was conducted to reduce the dimensionality of the chosen input and output variables. 
+<br>
+Second, DEA was applied into 4 different models.
+Finally, peers analysis and excess were conducted on the chosen model 
+
+<h3> II- Data understanding and modeling: </h3>
+<h4> 1- Inputs: </h4>
+- Input 1: Order rejections per product group,
+- Input 2: Customer complaints per product group, 
+- Input 3: Shipping cost per product group,
+- Input 4: Product cost per product group.
+
+<h4> 2- Output: </h4>
+- Output 1: Order count per product group,
+- Output 2: gross profit per product group, 
+- Output 3: Net promoter score per product group.
+
+<h4> 3- Model: </h4>
+Performing an input-oriented model is particularly important when the goal is to minimize the inputs.
+<br>
+
+<h3> III- Data Cleaning and Pre-processing: </h3>
+In this study, the data consists of weekly observations spanning from week 30 of 2022 to week 13 of 2023. This period corresponds approximately to July 2022 and March 2023.
+<br>
+
+<h4> 1- Fill the missing values:</h4>
+It was identified that 5 datasets contained missing values. To address this issue, the interpolation technique was employed in Python. This technique allows for the estimation of missing values by leveraging the available data from similar time periods. <br>
+The conversion into numeric type  was performed to ensure that the data was in a suitable format for further analysis. The filled data, now in numeric format, was saved and prepared for the subsequent steps of the analysis.
+
+<h5> - Input2: Shipping cost </h5>
+
+```{python}
+import pandas as pd
+
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Shipping List Unit Price per product group.xlsx')
+df = df.fillna(method='ffill').fillna(method='bfill') 
+
+df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric)
+df = df.interpolate(method='linear')
+df.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Input2.xlsx', index=False)
+
+```
+
+<h5> - Input4: Product cost  </h5>
+
+```{python}
+import pandas as pd
+
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Product cost by product group.xlsx')
+df = df.fillna(method='ffill').fillna(method='bfill') 
+
+df.iloc[:, 1:] = df.iloc[:, 1:].apply(pd.to_numeric)
+df = df.interpolate(method='linear')
+df.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Input4.xlsx', index=False)
+
+```
+
+<h5> - Output 1: Order count </h5>
+
+```{python}
+import pandas as pd
+
+count = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Order Count per Product group.xlsx')
+count = count.fillna(method='ffill').fillna(method='bfill') 
+
+count.iloc[:, 1:] = count.iloc[:, 1:].apply(pd.to_numeric)
+count = count.interpolate(method='linear')
+count.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Output1.xlsx', index=False)
+
+```
+
+<h5> - Output 2: Gross profit </h5>
+
+```{python}
+import pandas as pd
+
+profit = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Gross profit per product group.xlsx')
+profit = profit.fillna(method='ffill').fillna(method='bfill') 
+
+profit.iloc[:, 1:] = profit.iloc[:, 1:].apply(pd.to_numeric)
+profit = profit.interpolate(method='linear')
+profit.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Output2.xlsx', index=False)
+
+```
+
+<h5> - Output 3: Net promoter score</h5>
+
+```{python}
+import pandas as pd
+
+NPS = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/NPS by Product Group.xlsx')
+NPS = NPS.fillna(method='ffill').fillna(method='bfill') 
+
+NPS.iloc[:, 1:] = NPS.iloc[:, 1:].apply(pd.to_numeric)
+NPS = NPS.interpolate(method='linear')
+NPS.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Output3.xlsx', index=False)
+
+```
+
+<h4> 2- Summarize the time period:</h4>
+
+The filled datasets along with Input 3, will be averaged. This approach ensures a more stable and representative measure of these variables.
+<br>
+For Input 1, the order rejections will be aggregated over the time periods. Similarly, the Net Promoter score will remain the same as we have decided to include only one month for data unavailability. <br>
+
+<h5> - Input1: Counted rejections </h5>
+
+```{python}
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Order rejections per product group.xlsx')
+Counted_Rejections = df['Product ID'].value_counts()
+
+Input1 = pd.DataFrame({'Product ID': Counted_Rejections.index, 'Counted Rejections': Counted_Rejections.values})
+Input1.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Input1.xlsx', engine='openpyxl', index=False)
+
+print(Input1.head())
+```
+
+<h5> - Input2: Average shipping cost </h5>
+
+```{python}
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Input2.xlsx')
+df['Average Shipping Cost'] = df.iloc[:, 1:].mean(axis=1)
+
+Input2 = df[['Product ID', 'Average Shipping Cost']].copy()
+Input2.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Input2.xlsx', index=False)
+print(Input2.head())
+
+```
+
+<h5> - Input3: Average Items wih complaints </h5>
+
+```{python}
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Complaint Rate by Product Group Weekly.xlsx')
+df = df.loc[:, ~df.columns.str.contains('Complaint Rate|Complaint Action Amount|Complaint Items VGP')]
+df_cleaned = df.dropna(subset=['Items with Complaint'])
+
+Input3 = df_cleaned.groupby('Product ID')['Items with Complaint'].mean().reset_index()
+Input3.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Input3.xlsx', index=False)
+
+print(Input3.head())
+
+```
+
+<h5> - Input4: Average product cost </h5>
+
+```{python}
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Input4.xlsx')
+df['Average product cost'] = df.iloc[:, 1:].mean(axis=1)
+
+Input4 = df[['Product ID', 'Average product cost']].copy()
+Input4.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Input4.xlsx', index=False)
+print(Input4.head())
+
+```
+
+<h5> - Output1: Average order count </h5>
+
+```{python}
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Output1.xlsx')
+df['Average Order Count'] = round(df.iloc[:, 1:].mean(axis=1), 0)
+
+Output1 = df[['Product ID', 'Average Order Count']].copy()
+Output1.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Output1.xlsx', index=False)
+
+print(Output1.head())
+
+```
+
+<h5> - Output2: Average gross profit </h5>
+
+```{python}
+df = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Output2.xlsx')
+df['Average gross profit'] = round(df.iloc[:, 1:].mean(axis=1), 0)
+
+Output2 = df[['Product ID', 'Average gross profit']].copy()
+Output2.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Output2.xlsx', index=False)
+
+print(Output2.head())
+
+```
+
+<h5> - Output3: Net promoter score </h5>
+
+```{python}
+NPS = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Filled Output3.xlsx')
+NPS['Monthly NPS'] = round(NPS.iloc[:, 1])
+
+Output3 = NPS[['Product ID', 'Monthly NPS']].copy()
+Output3.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Output3.xlsx', index=False)
+
+print(Output3.head())
+
+```
+
+
+<h4> 3- Data normalization: </h4>
+
+Once all the datasets are prepared, we proceed to the normalization step. 
+In order to perform PCA and DEA, the input and output data for each DMU must be stored in a merged file.
+
+<h5> - Merging the variables </h5>
+
+```{python}
+Input1 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Input1.xlsx')
+Input2 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Input2.xlsx')
+Input3 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Input3.xlsx')
+Input4 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Input4.xlsx')
+Output1 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Output1.xlsx')
+Output2 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Output2.xlsx')
+Output3 = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Output3.xlsx')
+
+Dataset = pd.merge(Input1, Input2, on='Product ID')
+Dataset = pd.merge(Dataset, Input3, on='Product ID')
+Dataset = pd.merge(Dataset, Input4, on='Product ID')
+Dataset = pd.merge(Dataset, Output1, on='Product ID')
+Dataset = pd.merge(Dataset, Output2, on='Product ID')
+Dataset = pd.merge(Dataset, Output3, on='Product ID')
+Dataset.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Dataset.xlsx', index=False)
+print(Dataset.head())
+
+```
+
+<h5> - Normalization </h5>
+
+```{python}
+from sklearn.preprocessing import MinMaxScaler
+
+dataset = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Dataset.xlsx')
+scaler = MinMaxScaler()
+columns_to_normalize = ['Counted Rejections', 'Average Shipping Cost', 'Items with Complaint', 'Average product cost', 'Average Order Count', 'Average gross profit', 'Monthly NPS']
+normalized_dataset = scaler.fit_transform(dataset[columns_to_normalize])
+
+dataset[columns_to_normalize] = normalized_dataset
+
+dataset = dataset.sort_values(by=dataset.columns[0])
+dataset.to_excel('/Users/farahaboucha/Desktop/Graduation Project/Normalized Dataset.xlsx', index=False)
+
+```
+
+<h3> IV- PCA Application: </h3>
+
+<h4> 1- Optimal Principal Components: </h4>
+<h5> - Input and Output Matrix of data creation: </h5>
+```{r}
+data <- read_excel("/Users/farahaboucha/Desktop/Graduation Project/Normalized Dataset.xlsx")
+
+input.data.matrix <- matrix(nrow = nrow(data), ncol = 4)
+colnames(input.data.matrix) <- c("Counted Rejections", "Average Shipping Cost", "Items with Complaint", "Average product cost")
+rownames(input.data.matrix) <- paste(1:nrow(data), sep = "")
+
+input.data.matrix[, "Counted Rejections"] <- data$`Counted Rejections`
+input.data.matrix[, "Average Shipping Cost"] <- data$`Average Shipping Cost`
+input.data.matrix[, "Items with Complaint"] <- data$`Items with Complaint`
+input.data.matrix[, "Average product cost"] <- data$`Average product cost`
+
+input.data.matrix <- apply(input.data.matrix, 2, as.numeric)
+head(input.data.matrix)
+```
+
+```{r}
+data <- read_excel("/Users/farahaboucha/Desktop/Graduation Project/Normalized Dataset.xlsx")
+
+output.data.matrix <- matrix(nrow = nrow(data), ncol = 3)
+colnames(output.data.matrix) <- c( "Average Order Count", "Average gross profit", "Monthly NPS")
+rownames(output.data.matrix) <- paste(1:nrow(data), sep = "")
+
+output.data.matrix[, "Average Order Count"] <- data$`Average Order Count`
+output.data.matrix[, "Average gross profit"] <- data$`Average gross profit`
+output.data.matrix[, "Monthly NPS"] <- data$`Average gross profit`
+
+output.data.matrix <- apply(output.data.matrix, 2, as.numeric)
+head(output.data.matrix)
+```
+
+<h5> - Summary of PCA application: </h5>
+The summary of the PCA analysis provide information about the importance of each principal component (PC) and the proportion of variance explained by each component. 
+
+```{r}
+pca.output <- prcomp(output.data.matrix, scale = TRUE)
+summary(pca.output)
+```
+
+```{r}
+pca.input <- prcomp(input.data.matrix, scale = TRUE)
+summary(pca.input)
+```
+<h5> - Scree Plot: </h5>
+
+```{r}
+variance_prop <- pca.input$sdev^2 / sum(pca.input$sdev^2)
+eigenvalues <- pca.input$sdev^2
+
+barplot(variance_prop, xlab = "Principal Component", ylab = "Proportion of Variance Explained",
+        main = "Input Scree Plot", col = "lightblue")
+text(x = 1:length(eigenvalues), y = variance_prop, labels = round(eigenvalues, 2), pos = 3)
+
+elbow_point <- 0
+for (i in 2:length(eigenvalues)) {
+  if (variance_prop[i] - variance_prop[i-1] < 0.05) {
+    elbow_point <- i - 1
+    break
+  }
+}
+abline(v = elbow_point + 0.5, col = "red", lwd = 2, lty = 2)
+
+```
+
+```{r}
+variance_prop <- pca.output$sdev^2 / sum(pca.output$sdev^2)
+eigenvalues <- pca.output$sdev^2
+
+barplot(variance_prop, xlab = "Principal Component", ylab = "Proportion of Variance Explained",
+        main = "Output Scree Plot", col = "lightblue")
+text(x = 1:length(eigenvalues), y = variance_prop, labels = round(eigenvalues, 2), pos = 3)
+
+elbow_point <- 0
+for (i in 2:length(eigenvalues)) {
+  if (variance_prop[i] - variance_prop[i-1] < 0.05) {
+    elbow_point <- i - 1
+    break
+  }
+}
+abline(v = elbow_point + 0.5, col = "red", lwd = 2, lty = 2)
+
+```
+
+<h4> 2- PCA Visualization <h4>
+<h5> - The PCA graph of variables: </h5>
+
+```{r}
+input.variables <- fviz_pca_var(pca.input,
+                         col.var = "cos2",
+                         gradient.cols = c("red", "blue", "green"),
+                         repel = TRUE)
+input.variables <- input.variables + ggtitle("PCA graph of input variables")
+input.variables
+```
+
+```{r}
+output.variables <- fviz_pca_var(pca.output,
+                         col.var = "cos2",
+                         gradient.cols = c("red", "blue", "green"),
+                         repel = TRUE)
+output.variables <- output.variables + ggtitle("PCA graph of output variables")
+output.variables
+```
+
+<h4> 2- Contribution plot <h4>
+
+```{r}
+fviz_contrib(pca.input,choice = 'var')
+fviz_contrib(pca.input,choice = 'var',axes = 2)
+```
+
+
+```{r}
+fviz_contrib(pca.output,choice = 'var')
+fviz_contrib(pca.output,choice = 'var',axes = 2)
+```
+
+
+<h5> - The PC scores: </h5>
+
+```{r}
+input.scores <- predict(pca.input, newdata = input.data.matrix)
+input.scores_df <- as.data.frame(input.scores)
+colnames(input.scores_df) <- paste("Input", colnames(input.scores_df), sep = " ")
+
+write_xlsx(input.scores_df, "/Users/farahaboucha/Desktop/Graduation Project/Input scores.xlsx")
+head(input.scores_df)
+```
+
+```{r}
+output.scores <- predict(pca.output, newdata = output.data.matrix)
+output.scores_df <- as.data.frame(output.scores)
+colnames(output.scores_df) <- paste("Output", colnames(output.scores_df), sep = " ")
+
+write_xlsx(output.scores_df, "/Users/farahaboucha/Desktop/Graduation Project/Output scores.xlsx")
+head(output.scores_df)
+
+```
+```{python}
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+
+PC_input = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Input scores.xlsx')
+PC_output = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Output scores.xlsx')
+PCA_scores = pd.concat([PC_input, PC_output], axis=1)
+
+scaler = MinMaxScaler()
+normalized_scores = scaler.fit_transform(PCA_scores)
+normalized_dataset = pd.DataFrame(normalized_scores, columns=PCA_scores.columns)
+
+dataset = pd.read_excel('/Users/farahaboucha/Desktop/Graduation Project/Normalized Dataset.xlsx')
+merged_data = pd.concat([dataset, normalized_dataset], axis=1)
+
+merged_data.to_excel('/Users/farahaboucha/Desktop/Graduation Project/PCA-DEA Dataset.xlsx', index=False)
+print(merged_data.head())
+
+```
+
+<h3> PCA-DEA Application </h3>
+<h4> 1 - Model 1: Basic DEA Model </h4>
+<br>
+
+```{r}
+data <- read_excel("/Users/farahaboucha/Desktop/Graduation Project/Normalized Dataset.xlsx")
+x <- data.matrix(data[, colnames(data) %in% c("Counted Rejections", "Average Shipping Cost", "Items with Complaint", "Average product cost")])
+y <- data.matrix(data[, colnames(data) %in% c("Average Order Count", "Average gross profit", "Monthly NPS")])
+
+deam1results <- dea(x, y, RTS = "vrs")
+efficiencies <- efficiencies(deam1results)
+status <- ifelse(efficiencies == 1, "Efficient", "Inefficient")
+m1results <- data.frame(Efficiency = efficiencies, Status = status, row.names = row.names(x))
+
+subset <- subset(data, select = c("Product ID", colnames(x), colnames(y)))
+m1data <- merge(subset, m1results, all = TRUE, sort = FALSE)
+head(m1data)
+
+m1results
+
+```
+
+<h5> - DEA frontier of Model1 </h5>
+<br>
+
+```{r}
+dea.plot.frontier(x,y,RTS = "vrs" , txt=TRUE)
+```
+
+<h5> - Efficient DMUs of Model1 </h5>
+<br>
+
+```{r}
+m1efficientDMUs <- subset(m1results, Status == "Efficient")
+m1efficientDMUs
+```
+
+<h5> - Distribution of efficiency scores of Model1 </h5>
+
+To visualize the distribution of efficiency scores, a histogram was created. It will provide an overview of the efficiency scores, allowing the identification of the distribution and range of efficiencies among the DMUs. 
+<br>
+
+```{r}
+par(mar = c(2, 2, 2, 2) + 0.1)
+hist(efficiencies, breaks = 10, col = "lightblue", main = "The distribution of efficiency scores for Model 1", xlab = "Efficiency")
+
+```
+
+<h4> 2 - Model 2: Input dimension reduction </h4>
+<br>
+
+
+```{r}
+data <- read_excel("/Users/farahaboucha/Desktop/Graduation Project/PCA-DEA Normalized Dataset.xlsx")
+x <- data.matrix(data[, colnames(data) %in% c("Input PC1", "Input PC2")])
+y <- data.matrix(data[, colnames(data) %in% c("Average Order Count", "Average gross profit", "Monthly NPS")])
+
+deam2results <- dea(x, y, RTS = "vrs")
+
+m2efficiencies <- efficiencies(deam2results)
+status <- ifelse(efficiencies == 1, "Efficient", "Inefficient")
+m2results <- data.frame(Efficiency = efficiencies, Status = status, row.names = row.names(x))
+subset <- subset(data, select = c("Product ID", colnames(x), colnames(y)))
+m2data <- merge(subset, m2results, all = TRUE, sort = FALSE)
+
+head(m2data)
+m2results
+```
+<h5> - DEA frontier of Model2 </h5>
+<br>
+
+```{r}
+dea.plot.frontier(x,y,RTS = "vrs" , txt=TRUE)
+```
+<h5> - Efficient DMUs of Model2 </h5>
+<br>
+```{r}
+m2efficientDMUs <- subset(m2results, Status == "Efficient")
+m2efficientDMUs
+```
+<h5> - Distribution of efficiency scores of Model2 </h5>
+<br>
+
+```{r}
+par(mar = c(2, 2, 2, 2) + 0.1)
+hist(m2efficiencies, breaks = 10, col = "lightblue", main = "The distribution of efficiency scores for Model 2", xlab = "Efficiency")
+```
+
+<h4> 3 - Model 3: Output dimension reduction </h4>
+<br>
+
+```{r}
+data <- read_excel("/Users/farahaboucha/Desktop/Graduation Project/PCA-DEA Normalized Dataset.xlsx")
+x <- data.matrix(data[, colnames(data) %in% c("Counted Rejections", "Average Shipping Cost", "Items with Complaint", "Average product cost")])
+y <- data.matrix(data[, colnames(data) %in% c("Output PC1" ,	"Output PC2" )])
+
+deam3results <- dea(x, y, RTS = "vrs")
+m3efficiencies <- efficiencies(deam3results)
+
+status <- ifelse(efficiencies == 1, "Efficient", "Inefficient")
+m3results <- data.frame(Efficiency = efficiencies, Status = status, row.names = row.names(x))
+subset <- subset(data, select = c("Product ID", colnames(x), colnames(y)))
+m3data <- merge(subset, m3results, all = TRUE, sort = FALSE)
+
+m3results
+head(m3data)
+```
+
+<h5> - DEA frontier of Model3 </h5>
+<br>
+
+```{r}
+dea.plot.frontier(x,y,RTS = "vrs" , txt=TRUE)
+```
+
+<h5> - Efficient DMUs of Model3 </h5>
+<br>
+
+```{r}
+m3efficientDMUs <- subset(m3results, Status == "Efficient")
+m3efficientDMUs
+```
+
+<h5> - Distribution of efficiency scores of Model3 </h5>
+<br>
+
+```{r}
+par(mar = c(2, 2, 2, 2) + 0.1)
+hist(m3efficiencies, breaks = 10, col = "lightblue", main = "The distribution of efficiency scores for Model 3", xlab = "Efficiency")
+```
+
+<h4> 4 - Model 4: Joint Input-Output dimension reduction </h4>
+<br>
+
+```{r}
+data <- read_excel("/Users/farahaboucha/Desktop/Graduation Project/PCA-DEA Normalized Dataset.xlsx")
+x <- data.matrix(data[, colnames(data) %in% c("Input PC1", "Input PC2" )])
+y <- data.matrix(data[, colnames(data) %in% c("Output PC1" ,	"Output PC2" )])
+
+deam4results <- dea(x, y, RTS = "vrs")
+
+efficiencies <- efficiencies(deam4results)
+status <- ifelse(efficiencies == 1, "Efficient", "Inefficient")
+m4results <- data.frame(Efficiency = efficiencies, Status = status, row.names = row.names(x))
+subset <- subset(data, select = c("Product ID", colnames(x), colnames(y)))
+
+m4data <- merge(subset, m4results, all = TRUE, sort = FALSE)
+head(m4data)
+m4results
+```
+
+<h5> - DEA frontier of Model4 </h5>
+<br>
+
+```{r}
+dea.plot.frontier(x,y,RTS = "vrs" , txt=TRUE)
+```
+
+<h5> - Efficient DMUs of Model4 </h5>
+<br>
+
+```{r}
+m4efficientDMUs <- subset(m4results, Status == "Efficient")
+m4efficientDMUs
+```
+
+<h5> - Distribution of efficiency scores of Model4 </h5>
+<br>
+
+```{r}
+par(mar = c(2, 2, 2, 2) + 0.1)
+hist(efficiencies, breaks = 10, col = "lightblue", main = "The distribution of efficiency scores for Model 4", xlab = "Efficiency")
+```
+
+<h3> VI- Interpretation </h3>
+<h5> - Peers Analysis </h5>
+<br>
+
+```{r}
+peers <- data.frame(peers(deam4results))
+lambda <- data.frame(lambda(deam4results))
+lambda.matrix <- as.matrix(lambda(deam4results))
+
+peers
+lambda
+```
+
+<h5> - Ranking of DMUs Based on peers weight </h5>
+<br>
+
+```{r}
+rankedDMUs <- rank(-lambda, ties.method = "min")
+rankedDMUs <- data.frame(DMU = rownames(lambda), Rank = rankedDMUs)
+rankedDMUs <- rankedDMUs[order(rankedDMUs$Rank), ]
+row.names(rankedDMUs) <- NULL
+
+head(rankedDMUs, 34)
+```
+<h5> - Ranking of DMUs Based on efficiency scores </h5>
+
+
+```{r}
+m4results <- m4results[order(-m4results$Efficiency), ]
+m4results$Rank <- seq_len(nrow(m4results))
+
+subset <- data.frame(Rank = m4results$Rank)
+row.names(subset) <- row.names(m4results)
+
+subset
+```
+
+<h5> - Excess Analysis </h5>
+
+```{r}
+excess <- data.frame(excess(deam4results,x,y))
+mean <- colMeans(excess)
+excess <- rbind(excess, mean)
+
+excess
+
+```
